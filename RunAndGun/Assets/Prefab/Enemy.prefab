@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 714610431466374422}
   - component: {fileID: 8299276716384213041}
   - component: {fileID: 8161827259838798925}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Enemy
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -112,6 +112,7 @@ MonoBehaviour:
   playerlayer:
     serializedVersion: 2
     m_Bits: 256
+  enemycamper: 0
 --- !u!50 &714610431466374422
 Rigidbody2D:
   serializedVersion: 4
@@ -177,7 +178,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1559977936942433970}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: spawn_point
   m_TagString: Untagged
   m_Icon: {fileID: 0}

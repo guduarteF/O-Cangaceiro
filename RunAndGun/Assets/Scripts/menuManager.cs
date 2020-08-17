@@ -25,12 +25,14 @@ public class menuManager : MonoBehaviour
        
         SceneManager.LoadScene("SampleScene");
         FindObjectOfType<soundManager>().Play("tutorial");
+        gametimer.g.newrecordText.gameObject.SetActive(false);
     }
     public void Restart()
     {
         FindObjectOfType<soundManager>().Play("menu_click");
         SceneManager.LoadSceneAsync("SampleScene");
-       
+        gametimer.g.newrecordText.gameObject.SetActive(false);
+
     }
 
     public void Menu()

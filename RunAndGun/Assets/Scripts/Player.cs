@@ -7,9 +7,10 @@ public class Player : MonoBehaviour
     [SerializeField] private LayerMask platformLayerMask;
     public float velocidade, impulso = 1.5f, thrust, comewithme, movimento;
     public bool isgrounded, correndo, troca = false, gameover_bool,ismoving;
-    public GameObject bala, municaocheia0, municaocheia1, municaocheia2, municaocheia3, municaocheia4, chapeu_0, chapeu_1, chapeu_2, gameover, loading;
+    public GameObject bala, municaocheia0, municaocheia1, municaocheia2, municaocheia3, municaocheia4, chapeu_0, chapeu_1, chapeu_2, gameover, loadingpistol,loadingshotgun,loadingsniper;
     public Transform spawnPoint;
-    public int balas = 5, vida = 3, count = 0;
+    public int balaspistol = 5, vida = 3, count = 0;
+    private int balasshotgun = 3, balassniper = 6;
     private int numero;
     public ParticleSystem poeira;
     private CapsuleCollider2D boxCollider2d;
@@ -25,36 +26,92 @@ public class Player : MonoBehaviour
     public GameObject dialog2;
     public GameObject Ebutton;
     public GameObject Ebutton2;
-    public float fire_rate;
-    private float tempoentretiros;
+    public float pistol_fire_rate, sniper_fire_rate, shotgun_fire_rate;
+    private float tempoentretirospistol;
+    private float tempoentretirossniper;
+    private float tempoentretirosshotgun;
     private bool colide_parede;
     public static Player plyr;
     private bool isreloading;
-
+    public Joystick joystick;
+    private int contador;
+    private bool isSliding = false;
+    public CapsuleCollider2D regularcoll;
+    public CapsuleCollider2D slidingcoll;
+    public float slideSpeed;
+    public int countslide = 0;
+    public Transform groundCheck;
+    public float checkRadius;
+    public LayerMask whatisGround;
+    public bool isTouchingFront;
+    public Transform frontCheck;
+    bool wallSliding;
+    public float wallSlidingSpeed;
+    bool isGrounded;
+    bool wallJumping;
+    public float xWallForce;
+    public float yWallForce;
+    public float WallJumpTime;
+    public bool shotgun, pistol, sniper;
     public float extraHeightText = 20f;
+    public GameObject sniperBullet;
+    public LayerMask enemylayer;
+    public RaycastHit2D pontodecolisao;
+    public GameObject pistolimage, sniperimage, shotgunimage;
+    public GameObject blood;
+    public GameObject pistolhud, sniperhud, shotgunhud;
+    public GameObject municaocheia0sniper, municaocheia1sniper, municaocheia2sniper, municaocheia3sniper, municaocheia4sniper, municaocheia5sniper, municaocheia0shotgun, municaocheia1shotgun, municaocheia2shotgun;
     #endregion
     #region Start
-    void Start() //O Start executa sempre que o jogo for iniciado , apenas UMA vez.
+    void Start() 
     {
-        //Toda atribuição de variáveis devem ser feitas no Start(). No update elas irão ser chamadas a cada frame , e isso afeta no desempenho do jogo
-        // Essa atribuições são feitas para acelerar a produtividade do código. Assim eu posso chamar uma função grande com apenas poucos dígitos.
+        pistol = true;
+        pistolimage.SetActive(true);
+        sniperimage.SetActive(false);
+        shotgunimage.SetActive(false);      
         audiosrc = GetComponent<AudioSource>();
         gameover_bool = false;
         player_script = this;   
-        loading.SetActive(false);
+        loadingpistol.SetActive(false);
+        loadingshotgun.SetActive(false);
+        loadingsniper.SetActive(false);
         count = 1;
-        Time.timeScale = 1f; // O Time.timeScale manipula a velocidade do jogo , faz câmera lenta ou acelera o jogo. O valor varia entre 0f - 2f . Sendo 0 (pause) , 0.5(câmera lenta), 1 (velocidade normal) , 2 (dobro da velocidade).
+        Time.timeScale = 1f; 
         boxCollider2d = transform.GetComponent<CapsuleCollider2D>();
         Rigidbody2D rb = GetComponent<Rigidbody2D>();
-        tempoentretiros = 0;
+        tempoentretirospistol = 0;
         colide_parede = false;
         plyr = this;
+        pistolhud.SetActive(true);
+        movimento = 0f;
 
     }
     #endregion
     void Update()
     {      
-
+        if(sniper)
+        {
+            shotgunhud.SetActive(false);
+            pistolhud.SetActive(false);
+            sniperhud.SetActive(true);
+            
+        }
+        else if(shotgun)
+        {
+            sniperhud.SetActive(false);
+            pistolhud.SetActive(false);
+            shotgunhud.SetActive(true);
+            
+        }
+        else
+        {
+            sniperhud.SetActive(false);
+            shotgunhud.SetActive(false);
+            pistolhud.SetActive(true);
+            
+        }
+       
+       
         if(Input.GetKeyUp(KeyCode.P) && menuManager.menu_ref.is_Pause == false)
         {
             menuManager.menu_ref.Pause();
@@ -64,15 +121,28 @@ public class Player : MonoBehaviour
             menuManager.menu_ref.voltar();
         }
         #region Movimento
-        // O movimento recebe o Input.GetAxis . Um valor que varia entre -1 e 1 . E o Horizontal recebe do teclado o A (esquerda -1) D(direita 1) e as setas  <- -> . O player parado = 0.
-        if (colide_parede == true)
+       
+
+        if(joystick.Horizontal >= .2f)
+        {
+            movimento = 1;
+        }
+        else if(joystick.Horizontal <= -.2f)
+        {
+            movimento = -1;
+        }
+        else
         {
             movimento = 0;
         }
-        movimento = Input.GetAxis("Horizontal"); 
+        
         rb.velocity = new Vector2(movimento * velocidade, rb.velocity.y);
-
+        float verticalMove = joystick.Vertical;
        
+        if (verticalMove <= -.5f)
+        {
+            performSlide();
+        }
         if (rb.velocity.x != 0)
         {
             ismoving = true;
@@ -84,11 +154,11 @@ public class Player : MonoBehaviour
 
         if (ismoving == true)
         {
-            if (isGrounded() && !audiosrc.isPlaying)
+            if (isGrounded && !audiosrc.isPlaying)
             {
                 audiosrc.Play();
             }
-            if (!isGrounded())
+            if (!isGrounded)
             {
                 audiosrc.Stop();
             }
@@ -102,39 +172,34 @@ public class Player : MonoBehaviour
             audiosrc.Stop();
         }
 
-        if (movimento < 0 && troca == false) //Se o movimento for menor que 0 e o booleano troca for falso o spawnPoint(gameobject definido para a saído do tiro) irá rotacionar 180 graus.
+        if (movimento < 0 && troca == false) 
         {
             spawnPoint.transform.Rotate(0, 0, 180);
             troca = true;
-
-
         }
-        if (movimento > 0 && troca == true) // Se o movimento for maior que 0 e o booleano for verdadeiro ele irá rotacionar novamente
+        if (movimento > 0 && troca == true) 
         {
             spawnPoint.transform.Rotate(0, 0, 180);
             troca = false;
         }
 
         if (movimento < 0 ) 
-        {
-           
-           
-            spawnPoint.position = new Vector2(this.transform.position.x - 30, spawnPoint.transform.position.y); // Se o movimento for menor que zero o spawnpoint muda de posição horizontal (x) , o y e o z se mantem. Ele também chama a função Flip() que flipa o Sprite do player.
+        {                     
+            spawnPoint.position = new Vector2(this.transform.position.x - 30, spawnPoint.transform.position.y); 
 
-            GetComponent<SpriteRenderer>().flipX = true; //flipar o objeto horizontalmente. flipY fliparia verticalmente.
+            GetComponent<SpriteRenderer>().flipX = true; 
             correndo = true;
           
             if(numero == 0)
             {
                 numero = 1;
-            }
-            
+            }          
         }
       
         if(movimento == 0) 
         {        
             correndo = false;
-            GetComponent<Animator>().SetBool("Correndo", false); //Pega o component animator e torna o booleano falso. Desativando a animação de corrida
+            GetComponent<Animator>().SetBool("Correndo", false); 
         }
 
         if(movimento > 0)
@@ -144,7 +209,7 @@ public class Player : MonoBehaviour
             
             if(numero == 1)
             {
-                Flip(); //Uma função definida fora do update que eu dei o nome de Flip.
+                Flip(); 
                 numero = 0;
             }
         }
@@ -156,54 +221,74 @@ public class Player : MonoBehaviour
         #endregion
 
         #region Pulo
-        if (Input.GetKeyDown("space") && isGrounded()) // Se apertar espaço e a função isGrounded retornar verdadeira então :
+       
+            
+            if (isGrounded == false)
+            {
+                contador = 0;
+                GetComponent<Animator>().SetBool("Correndo", false);
+                GetComponent<Animator>().SetBool("pulo_ar", true);
+            }
+            if (isGrounded == true)
+            {
+                GetComponent<Animator>().SetBool("pulo_ar", false);
+            }
+        
+        
+           if(movimento <0)
+           {
+             frontCheck.transform.position =new Vector2(gameObject.transform.position.x + -20f, gameObject.transform.position.y + 0.36f);
+           }
+           else
+           {
+            frontCheck.transform.position = new Vector2(gameObject.transform.position.x + 20f, gameObject.transform.position.y + 0.36f);
+            }
+       
+        isTouchingFront = Physics2D.OverlapCircle(frontCheck.position, checkRadius, whatisGround);
+       
+        if (isTouchingFront == true && isGrounded == false && movimento != 0)
         {
-            rb.AddForce(new Vector2(rb.velocity.x, impulso)); //AddForce adiciona uma força no eixo em questão(y)
-           // GetComponent<Animator>().SetBool("Pulo", true); 
-            dust();
-            FindObjectOfType<soundManager>().Play("jump_player");
-           
+            wallSliding = true;
         }
-        if (isGrounded() == false)
+        else
         {
-            GetComponent<Animator>().SetBool("Correndo", false);
-            GetComponent<Animator>().SetBool("pulo_ar", true);
-        }
-        if (isGrounded() == true)
-        {
-            GetComponent<Animator>().SetBool("pulo_ar",false);
+            wallSliding = false;
         }
 
 
+        if (wallSliding)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
+        }
+
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, whatisGround);
+
+        if(Input.GetKeyDown(KeyCode.Space) && wallSliding)
+        {
+            wallJumping = true;
+            Invoke("SetWallJumpingToFalse", WallJumpTime);
+        }
+
+        if(wallJumping)
+        {
+            rb.velocity = new Vector2(xWallForce * -movimento, yWallForce);
+        }
 
 
         #endregion
 
         #region Tiro , Recarregar , Balas
 
-        if ((Input.GetKeyUp(KeyCode.K) && balas>0 && Time.time > tempoentretiros && isreloading == false)) //Se apertar control e as balas forem maior que zero então:
-        {
-            FindObjectOfType<soundManager>().Play("player_shooting");
-            muzzlescript.ms.animFlash(); //referencia a um script para executar o particleSystem (efeito visual do clarão do tiro)
-            balas--; // diminui uma bala do pente
-           
-            StartCoroutine(Tempo()); // Executa uma função Coroutine chamada Tempo
-        }
-        if(Input.GetKeyUp(KeyCode.LeftControl) && balas ==0)
-        {
-            FindObjectOfType<soundManager>().Play("no_ammo");
-        }
+      
        
-        if (Input.GetKeyUp(KeyCode.R) && balas<5 && isreloading == false)
-        {
-            StartCoroutine(Reload()); 
-        }
-        switch (balas) //Switch é um condicional parecido com o if , ele verifica cada valor para uma variável (balas nesse caso) e se ele for = a um desses casos executa um comando:
+       
+       
+        switch (balaspistol)
         {
 
             case 0:
-                municaocheia4.SetActive(false); //Desativa um gameobject
-                break; //O break encerra o loop , para não chamar a mesma função inumeras vezes.
+                municaocheia4.SetActive(false); 
+                break; 
             case 1:
                 municaocheia3.SetActive(false);
                 break;
@@ -218,6 +303,44 @@ public class Player : MonoBehaviour
                 break;
 
         }
+
+        switch (balasshotgun)
+        {
+            case 0:
+                municaocheia0shotgun.SetActive(false);
+                break;
+            case 1:
+                municaocheia1shotgun.SetActive(false);
+                break;
+            case 2:
+                municaocheia2shotgun.SetActive(false);
+                break;
+           
+        }
+
+        switch (balassniper)
+        {
+            case 0:
+                municaocheia0sniper.SetActive(false);
+                break;
+            case 1:
+                municaocheia1sniper.SetActive(false);
+                break;
+            case 2:
+                municaocheia2sniper.SetActive(false);
+                break;
+            case 3:
+                municaocheia3sniper.SetActive(false);
+                break;
+            case 4:
+                municaocheia4sniper.SetActive(false);
+                break;
+            case 5:
+                municaocheia5sniper.SetActive(false);
+                break;
+
+        }
+
         #endregion
 
 
@@ -287,15 +410,12 @@ public class Player : MonoBehaviour
     //On collision é para colisões em que os objetos interagem entre si. Sendo o Enter para a entrada de colisão e Exit a saída
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Chao")) //se o gameobject (o objeto que o script está inserido) colidir com um objeto com Tag 'Chão' então:
+        if (collision.gameObject.CompareTag("Chao"))
         {
-            dust(); // chama a função dust();
+            dust();
         }
 
-        if(collision.gameObject.CompareTag("parede"))
-        {
-            colide_parede = true;
-        }
+       
     }
 
     private void OnCollisionExit2D(Collision2D collision)
@@ -310,7 +430,7 @@ public class Player : MonoBehaviour
             vida = vida - 3;
             
         }
-        rb = GetComponent<Rigidbody2D>(); 
+        rb = GetComponent<Rigidbody2D>();
 
         if (collision.gameObject.CompareTag("passaro"))
         {
@@ -318,11 +438,15 @@ public class Player : MonoBehaviour
              vida--;
             rb.AddForce(Vector2.up * 2000f , ForceMode2D.Force);
             GetComponent<Animator>().SetBool("hit", true);
-            screenshake.instance.StartShake(.2f, .1f); //screenshake é o nome de um script , instance o nome de referência dele. StartShake é uma função do Unity quer recebe duas variáveis (tamanho e força , o quanto ele pode mexer a tela e a força disso)
+            screenshake.instance.StartShake(.2f, .1f);
             StartCoroutine(sairHit());
 
             
         }
+       
+        
+           
+        
 
         
     }
@@ -343,29 +467,111 @@ public class Player : MonoBehaviour
     #endregion
 
     #region IEnumerator
-    //Essa função Tempo que eu criei irá instaciar uma bala clone (clonebullet) do prefab chamado bala e esperar 2 segundos até ser destruido.
-    IEnumerator Tempo() // IEnumerator é uma função em que você pode manipular o tempo em que será executado algo . Pra que isso ocorra 3 coisas devem ser feitas : 1-Criar uma função IEnumerator 2-Dentro dela escolher o tempo que vai esperar yield return new WaitForSeconds(2f); [2 segundos nesse caso] e 3-No lugar do código que você quiser chamar essa função StartCoroutine(nomedafunção());
-    {
-        tempoentretiros = Time.time + fire_rate;
-        GameObject cloneBullet = Instantiate(bala, spawnPoint.position, spawnPoint.rotation); // Cria um GameObject chamado cloneBullet que é valido apenas nessa função (Toda variável criada dentro de uma função é valida apenas nela) . E Instancia esse gameobject. O Instantiate recebe 3 valores(gameobject original que será clonado,posicao , rotação)
-        yield return new WaitForSeconds(.7f);
-        Destroy(cloneBullet); //Destroy irá destruir algo que estará entre parenteses , deletar da cena.
+   
+    IEnumerator Atirar()
+    {      
+        muzzlescript.ms.animFlash(); 
+       
+        if(pistol)
+        {
+            balaspistol--;
+            tempoentretirospistol = Time.time + pistol_fire_rate;
+            FindObjectOfType<soundManager>().Play("player_shooting");
+            GameObject cloneBullet = Instantiate(bala, spawnPoint.position, spawnPoint.rotation);
+            yield return new WaitForSeconds(.7f);
+            Destroy(cloneBullet); 
+        }
+        else if(sniper)
+        {
+            balassniper--;
+            tempoentretirossniper = Time.time + sniper_fire_rate;
+            FindObjectOfType<soundManager>().Play("sniper");
+            RaycastHit2D hit = Physics2D.Raycast(spawnPoint.position, new Vector2(spawnPoint.position.x + 10f, spawnPoint.position.y), 999f, enemylayer);
+           
+            if (hit)
+            {
+                Instantiate(blood, hit.transform.position, Quaternion.identity);               
+                Destroy(hit.collider.gameObject);
+            }
+            Instantiate(sniperBullet, spawnPoint.position, spawnPoint.rotation);
+            FindObjectOfType<soundManager>().Play("player_shooting");
+        }
+        else
+        {
+            FindObjectOfType<soundManager>().Play("shotgun");
+            balasshotgun--;
+            tempoentretirosshotgun = Time.time + shotgun_fire_rate;
+            for (int i = 0; i < 10; i++)
+            {
+                
+                if (GetComponent<SpriteRenderer>().flipX == true)
+                {
+                    float anglea = Random.Range(175, 185);
+                    GameObject CloneBullet = Instantiate(bala, spawnPoint.transform.position, Quaternion.AngleAxis(anglea, Vector3.forward));
+                    Destroy(CloneBullet, 1f);
+                }
+                else
+                {
+                    float anglea = Random.Range(-5, 5);
+                    GameObject CloneBullet = Instantiate(bala, spawnPoint.transform.position, Quaternion.AngleAxis(anglea, -Vector3.forward));
+                    Destroy(CloneBullet, 1f);
+                }
+
+            }
+        }
+
+        
+      
+       
     }
     
     IEnumerator Reload()
     {
-        loading.SetActive(true);
-        isreloading = true;
-        yield return new WaitForSeconds(2f);
-        FindObjectOfType<soundManager>().Play("reload");
-        balas = 5;
-        municaocheia0.SetActive(true);
-        municaocheia1.SetActive(true);
-        municaocheia2.SetActive(true);
-        municaocheia3.SetActive(true);
-        municaocheia4.SetActive(true);
-        loading.SetActive(false);
-        isreloading = false;
+        if(pistol)
+        {
+            loadingpistol.SetActive(true);
+            isreloading = true;
+            yield return new WaitForSeconds(2f);
+            FindObjectOfType<soundManager>().Play("reload");
+            balaspistol = 5;
+            municaocheia0.SetActive(true);
+            municaocheia1.SetActive(true);
+            municaocheia2.SetActive(true);
+            municaocheia3.SetActive(true);
+            municaocheia4.SetActive(true);
+            loadingpistol.SetActive(false);
+            isreloading = false;
+        }
+        else if(shotgun)
+        {
+            loadingshotgun.SetActive(true);
+            isreloading = true;
+            yield return new WaitForSeconds(2f);
+            FindObjectOfType<soundManager>().Play("reload");
+            balasshotgun = 3;
+            municaocheia0shotgun.SetActive(true);
+            municaocheia1shotgun.SetActive(true);
+            municaocheia2shotgun.SetActive(true);   
+            loadingshotgun.SetActive(false);
+            isreloading = false;
+        }
+        else
+        {
+            loadingsniper.SetActive(true);
+            isreloading = true;
+            yield return new WaitForSeconds(2f);
+            FindObjectOfType<soundManager>().Play("reload");
+            balassniper = 6;
+            municaocheia0sniper.SetActive(true);
+            municaocheia1sniper.SetActive(true);
+            municaocheia2sniper.SetActive(true);
+            municaocheia3sniper.SetActive(true);
+            municaocheia4sniper.SetActive(true);
+            municaocheia5sniper.SetActive(true);
+            loadingsniper.SetActive(false);
+            isreloading = false;
+        }
+       
     }
     IEnumerator Morte()
     {
@@ -399,35 +605,176 @@ public class Player : MonoBehaviour
     #endregion
    
     #region Funções
+
+    void SetWallJumpingToFalse()
+    {
+        wallJumping = false;
+    }
     void dust()
     {
         poeira.transform.position = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y - 30f); ;
-        poeira.Play(); //Poeira é uma variavel que eu criei , quando a função dust() for chamada irá dar play na particula.
+        poeira.Play(); 
     }
-    private bool isGrounded()
-    {
-        RaycastHit2D raycastHit = Physics2D.Raycast(boxCollider2d.bounds.center, Vector2.down, boxCollider2d.bounds.extents.y + extraHeightText, platformLayerMask); //Raycast , é um raio que é emitido a uma direção para executar algum codigo. Nesse caso é criado uma variável chamada raycastHit que é do tipo RaycastHit2d e ela irá receber um RayCast . O a função Raycast parte do Physics2D e recebe 3 valores:( Vector2 origin , vector2 direção, float distance , int layermask) O layer mask é a camada que será afetada , nesse caso o platformLayer mask é uma variavel que eu criei e dentro do jogo eu arrastei o tilemap do chão para ela. Ou seja o raycast só irá afetar o chão.
-        Color rayColor; //Criei uma variavel de cor chamado rayColor
-        if (raycastHit.collider != null) // se a colisão desse raycastHit for diferente(!=) de nula então:
-        {
-            
-            rayColor = Color.green; //cor do raio recebe verde
-        }
-        else // senão
-        {
-           
-            rayColor = Color.red; // cor do raio recebe vermelho
-        }
-          Debug.DrawRay(boxCollider2d.bounds.center, Vector2.down*(boxCollider2d.bounds.extents.y + extraHeightText),rayColor); // Debug serve para jogar no console um valor de uma variavel , função ou texto. Nesse caso o DrawRay iria desenhar uma linha dentro da cena do jogo .
-        return raycastHit.collider != null; // retorna para a função isGrounded que é booleana a colisão do raycast diferente de nula. Ou seja quando eu chama a função isGrounded ela será verdadeira caso a colisão seja verdadeira
-    }
+    
     private void Flip() 
     {
         GetComponent<SpriteRenderer>().flipX = false; 
     }
 
-    #endregion
+    private void performSlide()
+    {
+      
+        if(countslide == 0 )
+        {
+            isSliding = true;
+            regularcoll.enabled = false;
+            slidingcoll.enabled = true;
+            if (movimento != 0)
+            {
+                velocidade = 300;
+                
+            }
+            StartCoroutine(endSlide());
+            countslide = 1;
+        }
+           
+        
+       
 
+
+    }
+
+    IEnumerator endSlide()
+    {
+        yield return new WaitForSeconds(0.8f);
+        regularcoll.enabled = true;
+        slidingcoll.enabled = false;
+        isSliding = false;
+        velocidade = 200;
+        yield return new WaitForSeconds(1f);
+        countslide = 0;
+    }
+
+   
+    public void ButtonRecarregar()
+    {
+        if(pistol)
+        {
+            if (balaspistol < 5 && isreloading == false)
+            {
+                StartCoroutine(Reload());
+            }
+        }
+        else if(sniper)
+        {
+            if (balassniper < 6 && isreloading == false)
+            {
+                StartCoroutine(Reload());
+            }
+        }
+        else
+        {
+            if (balasshotgun < 3 && isreloading == false)
+            {
+                StartCoroutine(Reload());
+            }
+        }
+        
+    }
+
+    public void Jump()
+    {
+        if (isGrounded && contador == 0) // Se apertar espaço e a função isGrounded retornar verdadeira então :
+        {
+            contador = 1;
+            rb.AddForce(new Vector2(rb.velocity.x, impulso)); //AddForce adiciona uma força no eixo em questão(y)                                                            // GetComponent<Animator>().SetBool("Pulo", true); 
+            dust();
+            FindObjectOfType<soundManager>().Play("jump_player");
+
+        }
+    }
+
+    public void shotgunweapon()
+    {
+        shotgun = true;
+        pistol = false;
+        sniper = false;
+        pistolimage.SetActive(false);
+        sniperimage.SetActive(false);
+        shotgunimage.SetActive(true);
+      
+             
+        
+    }
+
+    public void pistolweapon()
+    {
+        pistol = true;
+        sniper = false;
+        shotgun = false;
+        pistolimage.SetActive(true);
+        sniperimage.SetActive(false);
+        shotgunimage.SetActive(false);
+       
+    }
+
+    public void sniperweapon()
+    {
+        sniper = true;
+        shotgun = false;
+        pistol = false;
+        pistolimage.SetActive(false);
+        sniperimage.SetActive(true);
+        shotgunimage.SetActive(false);
+
+       
+    }
+
+    public void Tiro()
+    {
+        if(pistol)
+        {
+            if ((balaspistol > 0 && Time.time > tempoentretirospistol && isreloading == false)) //Se apertar control e as balas forem maior que zero então:
+            {
+                StartCoroutine(Atirar()); // Executa uma função Coroutine chamada Tempo
+            }
+            else if (balaspistol == 0)
+            {
+                FindObjectOfType<soundManager>().Play("no_ammo");
+            }
+        }
+        else if(sniper)
+        {
+            if ((balassniper > 0 && Time.time > tempoentretirossniper && isreloading == false)) //Se apertar control e as balas forem maior que zero então:
+            {
+                StartCoroutine(Atirar()); // Executa uma função Coroutine chamada Tempo
+            }
+            else if (balassniper==0)
+            {
+                FindObjectOfType<soundManager>().Play("no_ammo");
+            }
+        }
+        else
+        {
+            if ((balasshotgun > 0 && Time.time > tempoentretirosshotgun && isreloading == false)) //Se apertar control e as balas forem maior que zero então:
+            {
+                StartCoroutine(Atirar()); // Executa uma função Coroutine chamada Tempo
+            }
+            else if (balasshotgun == 0)
+            {
+                FindObjectOfType<soundManager>().Play("no_ammo");
+            }
+        }
+       
+    }
+
+
+
+    
+
+
+    #endregion
+  
 
 
 

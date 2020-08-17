@@ -20,7 +20,13 @@ public class muzzlescript : MonoBehaviour
     public void animFlash()
     {
         transform.position = new Vector2(spawnPos.position.x, spawnPos.position.y);
-        Instantiate(esplosao, spawnPos.position, Quaternion.identity);
+        int count = 0;
+        if(count == 0)
+        {
+            ParticleSystem cloneflash = Instantiate(esplosao, spawnPos.position, Quaternion.identity);
+            count++;
+        }
+       
         GetComponent<Animator>().Play("muzzleflashanim", -1, 0f);
         
     }

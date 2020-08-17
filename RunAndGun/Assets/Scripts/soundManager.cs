@@ -18,16 +18,7 @@ public class soundManager : MonoBehaviour
             s.source.loop = s.loop;
         }
     }
-    void Start()
-    {
-        
-       //Play("theme");
-        
-    }
-    public void Update()
-    {
-        
-    }
+   
 
 
 

@@ -114,7 +114,7 @@ public class EnemyScript : MonoBehaviour
         {
             
             StartCoroutine(Death());
-            sangue();
+            
             
 
         }
@@ -122,16 +122,17 @@ public class EnemyScript : MonoBehaviour
         if (collision.gameObject.CompareTag("limitemapa"))
         {
             StartCoroutine(Death());
-            sangue();
+            
 
         }
 
 
     }
 
-    IEnumerator Death()
+    public IEnumerator Death()
     {
         FindObjectOfType<soundManager>().Play("enemy_hit");
+        sangue();
         morreu = true;
         Destroy(gameObject);
         yield return new WaitForSeconds(1f);
@@ -140,7 +141,7 @@ public class EnemyScript : MonoBehaviour
     public void sangue()
     {
         Instantiate(blood,transform.position,Quaternion.identity);
-        
+        Debug.Log("a");
     }
 
     public void AnimExplosion()

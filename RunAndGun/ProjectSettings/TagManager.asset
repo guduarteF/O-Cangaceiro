@@ -14,6 +14,7 @@ TagManager:
   - coldir
   - limitemapa
   - parede
+  - sniperbullet
   layers:
   - Default
   - TransparentFX
@@ -25,8 +26,8 @@ TagManager:
   - 
   - Player
   - Plataforma
-  - 
-  - 
+  - enemylayer
+  - balabala
   - 
   - 
   - 

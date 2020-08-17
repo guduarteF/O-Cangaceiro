@@ -36,7 +36,7 @@ public class bala : MonoBehaviour
             //    rb.AddForce(direction.normalized * knockbackStrengh, ForceMode2D.Impulse);
                 
             //}
-            Destroy(gameObject);
+            
 
         }
     }
