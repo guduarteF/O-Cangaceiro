@@ -88,8 +88,17 @@ public class Player : MonoBehaviour
     }
     #endregion
     void Update()
-    {      
-        if(sniper)
+    {
+        if(GetComponent<SpriteRenderer>().flipX == true)
+        {
+            Debug.DrawRay(new Vector2(spawnPoint.position.x, spawnPoint.position.y), new Vector2(spawnPoint.position.x - 9999f, spawnPoint.position.y));
+        }
+        else
+        {
+            Debug.DrawRay(new Vector2(spawnPoint.position.x, spawnPoint.position.y), new Vector2(spawnPoint.position.x + 9999f, spawnPoint.position.y));
+        }
+       
+        if (sniper)
         {
             shotgunhud.SetActive(false);
             pistolhud.SetActive(false);
@@ -486,13 +495,34 @@ public class Player : MonoBehaviour
             balassniper--;
             tempoentretirossniper = Time.time + sniper_fire_rate;
             FindObjectOfType<soundManager>().Play("sniper");
-            RaycastHit2D hit = Physics2D.Raycast(spawnPoint.position, new Vector2(spawnPoint.position.x + 10f, spawnPoint.position.y), 999f, enemylayer);
-           
-            if (hit)
+            //  RaycastHit2D hit = Physics2D.Raycast(spawnPoint.position, new Vector2(spawnPoint.position.x + 10f, spawnPoint.position.y), 999f, enemylayer);
+            float f_direction;
+          if(GetComponent<SpriteRenderer>().flipX == true)
             {
-                Instantiate(blood, hit.transform.position, Quaternion.identity);               
-                Destroy(hit.collider.gameObject);
+                f_direction = -9999f;
             }
+          else
+            {
+                f_direction = 9999f;
+            }
+            RaycastHit2D[] hits = Physics2D.RaycastAll(new Vector2(spawnPoint.position.x, spawnPoint.position.y), new Vector2(spawnPoint.position.x + f_direction, spawnPoint.position.y), 999f, enemylayer);
+           
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit2D hit = hits[i];
+                GameObject enemy = hit.collider.gameObject;
+               
+                if(enemy)
+                {
+                    Instantiate(blood, hit.transform.position, Quaternion.identity);
+                    Destroy(enemy.gameObject);
+                }
+            }
+            //if (hit)
+            //{
+            //    Instantiate(blood, hit.transform.position, Quaternion.identity);               
+            //    Destroy(hit.collider.gameObject);
+            //}
             Instantiate(sniperBullet, spawnPoint.position, spawnPoint.rotation);
             FindObjectOfType<soundManager>().Play("player_shooting");
         }
